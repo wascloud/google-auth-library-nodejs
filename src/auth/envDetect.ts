@@ -72,5 +72,10 @@ async function isKubernetesEngine() {
 }
 
 async function isComputeEngine() {
-  return gcpMetadata.isAvailable();
+  try {
+    const isAvailableResult = await gcpMetadata.isAvailable();
+    return isAvailableResult;
+  } catch (e) {
+    return false;
+  }
 }

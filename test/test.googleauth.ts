@@ -18,13 +18,7 @@ const assertRejects = require('assert-rejects');
 import * as child_process from 'child_process';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import {
-  BASE_PATH,
-  HEADERS,
-  HOST_ADDRESS,
-  SECONDARY_HOST_ADDRESS,
-  resetIsAvailableCache,
-} from 'gcp-metadata';
+import * as gcpMetadata from 'gcp-metadata';
 import * as nock from 'nock';
 import * as os from 'os';
 import * as path from 'path';
@@ -37,6 +31,14 @@ import {Compute} from '../src/auth/computeclient';
 import * as messages from '../src/messages';
 
 nock.disableNetConnect();
+
+const {
+  BASE_PATH,
+  HEADERS,
+  HOST_ADDRESS,
+  SECONDARY_HOST_ADDRESS,
+  resetIsAvailableCache,
+} = gcpMetadata;
 
 const isWindows = process.platform === 'win32';
 
@@ -143,6 +145,7 @@ describe('googleauth', () => {
   afterEach(() => {
     nock.cleanAll();
     sandbox.restore();
+    sinon.restore();
   });
 
   function mockWindows() {
@@ -1336,6 +1339,21 @@ describe('googleauth', () => {
     mockEnvVar('GAE_SERVICE', 'KITTY');
     const env = await auth.getEnv();
     assert.strictEqual(env, envDetect.GCPEnv.APP_ENGINE);
+  });
+
+  it('should handle getEnv() error', async () => {
+    envDetect.clear();
+    sinon.stub(gcpMetadata, 'isAvailable').throws(new Error('fake error'));
+    const env = await auth.getEnv();
+
+    assert.strictEqual(env, envDetect.GCPEnv.NONE);
+  });
+
+  it('should handle non-GCP environment', async () => {
+    envDetect.clear();
+    sinon.stub(gcpMetadata, 'isAvailable').resolves(false);
+    const env = await auth.getEnv();
+    assert.strictEqual(env, envDetect.GCPEnv.NONE);
   });
 
   it('should make the request', async () => {
